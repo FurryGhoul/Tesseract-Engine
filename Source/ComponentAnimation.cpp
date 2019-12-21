@@ -17,11 +17,6 @@
 //TMP
 #include "ModuleInput.h"
 
-#ifdef _DEBUG
-//#define TEST_MEMORY_MANAGER
-#include "mmgr/mmgr.h"
-#endif
-
 ComponentAnimation::ComponentAnimation(GameObject* parent, componentType type) : Component(parent, type)
 {
 	smoothT = true;
@@ -32,9 +27,6 @@ ComponentAnimation::ComponentAnimation(GameObject* parent, componentType type) :
 
 ComponentAnimation::~ComponentAnimation()
 {
-	ResourceAnimation* anim = (ResourceAnimation*)App->resources->GetResource(RUID);
-	if (anim != nullptr)
-		anim->UnloadMemory();
 }
 
 bool ComponentAnimation::Update(float dt)
