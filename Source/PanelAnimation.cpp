@@ -157,6 +157,7 @@ void PanelAnimation::Draw()
 			{
 				progress = (compAnimation->animTime*animation->ticksXsecond)*zoom;
 				scrolled = false;
+				LOG("%f", progress);
 			}
 
 			float framesInWindow = winSize / zoom;

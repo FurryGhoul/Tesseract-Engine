@@ -52,8 +52,9 @@ bool ModuleScene::Start()
 	quadTree = new Quadtree();
 	StartQuadTree();
 
-	//Load Street scene with the animation
-	App->scene_loader->loadSceneFile("Assets/Scenes/AnimationScene");
+	//Load Street scene
+	App->scene_loader->loadSceneFile("Assets/Scenes/Walk");
+	//App->scene_loader->loadScene("sceneTest");
 
 	ImGuizmo::Enable(false);
 

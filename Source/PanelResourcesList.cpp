@@ -73,7 +73,7 @@ void PanelResourcesList::Draw()
 	{
 		if (callbackComponent != nullptr)
 		{
-			callbackComponent->onResourceListEvent(0, tag.c_str());
+			callbackComponent->assignResource(0);
 		}
 		active = false;
 	}
