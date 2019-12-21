@@ -13,7 +13,6 @@
 #include "ComponentBone.h"
 
 #include "ResourceBone.h"
-#include "ResourceAnimationGraph.h"
 
 //TMP
 #include "ModuleInput.h"
@@ -26,6 +25,9 @@
 ComponentAnimation::ComponentAnimation(GameObject* parent, componentType type) : Component(parent, type)
 {
 	smoothT = true;
+
+	attackBlendTime = 0.1f;
+	walkBlendTime = 0.1f;
 }
 
 ComponentAnimation::~ComponentAnimation()
@@ -45,8 +47,33 @@ bool ComponentAnimation::Update(float dt)
 		bonesLoaded = true;
 	}
 
+	if (App->inGameMode())
+	{
+		if (RUID == attackUID && Finished())
+		{
+			assignResource(idleUID, true);
+			totalBlendTime = attackBlendTime;
+		}
+
+		if (attackUID != 0 && App->input->GetKey(SDL_SCANCODE_1) == KEY_DOWN && RUID == idleUID)
+		{
+			assignResource(attackUID, true, false);
+			totalBlendTime = attackBlendTime;
+		}
+		if (walkUID != 0 && walkUID && App->input->GetKey(SDL_SCANCODE_2) == KEY_DOWN && RUID != attackUID)
+		{
+			assignResource(walkUID, true);
+			totalBlendTime = walkBlendTime;
+		}
+		else if (App->input->GetKey(SDL_SCANCODE_2) == KEY_UP && RUID != attackUID)
+		{
+			assignResource(idleUID, true);
+			totalBlendTime = walkBlendTime;
+		}
+	}
+
 	ResourceAnimation* animation = (ResourceAnimation*)App->resources->GetResource(RUID);
-	if (animation != nullptr && animation->GetType() == R_ANIMATION)
+	if (animation != nullptr)
 	{
 		if(!TestPause)
 			animTime += dt*speed;
@@ -123,6 +150,9 @@ bool ComponentAnimation::Update(float dt)
 
 void ComponentAnimation::DrawInfo()
 {
+	ResourceAnimation* animation = (ResourceAnimation*)App->resources->GetResource(RUID);
+	ResourceAnimation* blendAnimation = (ResourceAnimation*)App->resources->GetResource(blendRUID);
+
 	ImGui::PushID("toggleAnimation");
 	ImGui::Checkbox("", &active);
 	ImGui::PopID();
@@ -130,52 +160,71 @@ void ComponentAnimation::DrawInfo()
 
 	if (ImGui::CollapsingHeader("Animation", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick))
 	{
-		if (ImGui::RadioButton("Single Animation", !useGraph))
-			useGraph = false;
+		beginDroppableSpace((animation == nullptr) ? "No Animation" : animation->GetName(), animation == nullptr);
 		ImGui::SameLine();
-		if (ImGui::RadioButton("Animation Graph", useGraph))
-			useGraph = true;
+		pickResourceButton(R_ANIMATION);
+		if (animation != nullptr)
+		{
+			ImGui::Checkbox("Loop", &loop);
+			ImGui::Checkbox("Interpolation", &interpolation);
 
-		if (useGraph)
-		{
-			ResourceAnimationGraph* graph = (ResourceAnimationGraph*)App->resources->GetResource(RUID);
-			beginDroppableSpace((graph == nullptr || graph->GetType() == R_ANIMATION) ? "No Animation Graph" : graph->GetName(), (graph == nullptr || graph->GetType() == R_ANIMATION));
-			ImGui::SameLine();
-			pickResourceButton(R_ANIMATIONGRAPH);
-		}
-		else
-		{
-			ResourceAnimation* animation = (ResourceAnimation*)App->resources->GetResource(RUID);
-			beginDroppableSpace((animation == nullptr || animation->GetType() == R_ANIMATIONGRAPH) ? "No Animation" : animation->GetName(), (animation == nullptr || animation->GetType() == R_ANIMATIONGRAPH));
-			ImGui::SameLine();
-			pickResourceButton(R_ANIMATION);
-			if (animation != nullptr && animation->GetType() != R_ANIMATIONGRAPH)
+			if (ImGui::Checkbox("Draw Bones", &debugDraw))
 			{
-				ImGui::Checkbox("Loop", &loop);
-				ImGui::Checkbox("Interpolation", &interpolation);
+				activateDebugBones(gameObject, debugDraw);
+			}
 
-				if (ImGui::Checkbox("Draw Bones", &debugDraw))
-				{
-					activateDebugBones(gameObject, debugDraw);
-				}
+			ImGui::Text("Animation Speed:");
+			ImGui::SameLine();
 
-				ImGui::Text("Animation Speed:");
+			ImGui::PushID("Speed");
+			ImGui::InputFloat("", &speed, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
+			ImGui::PopID();
+
+			ImGui::Text("Animation Times:\nDuration: %.2f | Speed: %f", animation->ticks,animation->ticksXsecond);
+			ImGui::Text("Number of bones: %d", animation->numBones);
+		}
+
+		ImGui::NewLine();
+		
+		if (ImGui::TreeNodeEx("Blend Animation when pressing 1"))
+		{
+			ResourceAnimation* attack = (ResourceAnimation*)App->resources->GetResource(attackUID);
+			ImGui::Text((attack != nullptr) ? attack->GetName() : "No animation");
+			ImGui::SameLine();
+			pickResourceButton(R_ANIMATION, "ATTACK");
+			if (attack != nullptr)
+			{
+				ImGui::Text("Blend time:");
 				ImGui::SameLine();
 
-				ImGui::PushID("Speed");
-				ImGui::InputFloat("", &speed, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
+				ImGui::PushID("total blend time");
+				ImGui::InputFloat("", &attackBlendTime, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
 				ImGui::PopID();
-
-				ImGui::Text("Animation Times:\nDuration: %.2f | Speed: %f", animation->ticks, animation->ticksXsecond);
-				ImGui::Text("Number of bones: %d", animation->numBones);
 			}
+			ImGui::TreePop();
+		}
 
-			ImGui::NewLine();
-
-			if (ImGui::Checkbox("Smooth Transition", &smoothT))
+		if (ImGui::TreeNodeEx("Blend Animation when pressing 2"))
+		{
+			ResourceAnimation* walk = (ResourceAnimation*)App->resources->GetResource(walkUID);
+			ImGui::Text((walk != nullptr) ? walk->GetName() : "No animation");
+			ImGui::SameLine();
+			pickResourceButton(R_ANIMATION, "WALK");
+			if (walk != nullptr)
 			{
-				frozenT = false;
+				ImGui::Text("Blend time:");
+				ImGui::SameLine();
+
+				ImGui::PushID("total blend time");
+				ImGui::InputFloat("", &walkBlendTime, 0.0f, 0.0f, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue);
+				ImGui::PopID();
 			}
+			ImGui::TreePop();
+		}
+
+		if (ImGui::Checkbox("Smooth Transition", &smoothT))
+		{
+			frozenT = false;
 		}
 	}
 }
@@ -194,6 +243,9 @@ void ComponentAnimation::activateDebugBones(GameObject* GO, bool active)
 
 void ComponentAnimation::assignResource(uint UID, bool doBlend, bool blendloop)
 {
+	if (idleUID == 0)
+		idleUID = UID;
+
 	if (!doBlend)
 	{
 		Component::assignResource(UID);
@@ -220,7 +272,7 @@ void ComponentAnimation::assignResource(uint UID, bool doBlend, bool blendloop)
 	}
 
 	ResourceAnimation* animation = (ResourceAnimation*)App->resources->GetResource(UID);
-	if (animation != nullptr && animation->GetType() == R_ANIMATION)
+	if (animation != nullptr)
 	{
 		if (doBlend)
 		{
@@ -247,14 +299,13 @@ void ComponentAnimation::onResourceListEvent(uint UID, std::string tag)
 	{
 		assignResource(UID);
 	}
-	else
+	else if (tag == "WALK")
 	{
-		ResourceAnimationGraph* graph = (ResourceAnimationGraph*)App->resources->GetResource(RUID);		
-		Node* node = graph->getNode(std::stoul(tag));
-		if (node != nullptr)
-		{
-			node->animationUID = UID;
-		}
+		walkUID = UID;
+	}
+	else if (tag == "ATTACK")
+	{
+		attackUID = UID;
 	}
 }
 
@@ -266,22 +317,31 @@ void ComponentAnimation::Save(JSON_Value * component) const
 
 	animation->addInt("Type", type);
 	animation->addUint("UID", UID);
-	animation->addBool("useGraph", useGraph);
 	animation->addBool("debugDraw", debugDraw);
 	animation->addBool("loop", loop);
 	animation->addBool("interpolation", interpolation);
 
+	//TMP
+	ResourceAnimation* walk = (ResourceAnimation*)App->resources->GetResource(walkUID);
+	if (walk != nullptr)
+	{
+		animation->addString("walkFBX", walk->GetFile());
+		animation->addString("walkAnimation", walk->GetName());
+	}
+	animation->addFloat("walkBlendTime", walkBlendTime);
+
+	ResourceAnimation* attack = (ResourceAnimation*)App->resources->GetResource(attackUID);
+	if (attack != nullptr)
+	{
+		animation->addString("attackFBX", attack->GetFile());
+		animation->addString("attackAnimation", attack->GetName());
+	}
+	animation->addFloat("attackBlendTime", attackBlendTime);
+
 	if (rAnimation != nullptr)
 	{
-		if (rAnimation->GetType() == R_ANIMATION)
-		{
-			animation->addString("FBX", rAnimation->GetFile());
-			animation->addString("animation", rAnimation->GetName());
-		}
-		else
-		{
-			animation->addString("Graph", rAnimation->GetFile());
-		}
+		animation->addString("FBX", rAnimation->GetFile());
+		animation->addString("animation", rAnimation->GetName());
 	}
 
 	component->addValue("", animation);
@@ -289,15 +349,16 @@ void ComponentAnimation::Save(JSON_Value * component) const
 
 void ComponentAnimation::Load(JSON_Value * component)
 {
-	useGraph = component->getBool("useGraph");
-	if (!useGraph)
-		RUID = App->resources->getResourceUIDFromMeta(component->getString("FBX"), "animations", component->getString("animation"));
-	else
-		RUID = App->resources->getResourceUIDFromMeta(component->getString("Graph"));
-
+	RUID = App->resources->getResourceUIDFromMeta(component->getString("FBX"), "animations", component->getString("animation"));
 	debugDraw = component->getBool("debugDraw");
 	loop = component->getBool("loop");
 	interpolation = component->getBool("interpolation");
+
+	//TMP
+	walkUID = App->resources->getResourceUIDFromMeta(component->getString("walkFBX"), "animations", component->getString("walkAnimation"));
+	attackUID = App->resources->getResourceUIDFromMeta(component->getString("attackFBX"), "animations", component->getString("attackAnimation"));
+	walkBlendTime = component->getFloat("walkBlendTime");
+	attackBlendTime = component->getFloat("attackBlendTime");
 
 	Resource* res = App->resources->GetResource(RUID);
 	if (res != nullptr)

@@ -36,7 +36,7 @@ bool PanelAnimation::fillInfo()
 		{
 			animation = (ResourceAnimation*)App->resources->GetResource(compAnimation->RUID);
 
-			if (animation != nullptr && animation->GetType() == R_ANIMATION)
+			if (animation != nullptr)
 			{
 				ret = true;
 				numFrames = animation->ticks;

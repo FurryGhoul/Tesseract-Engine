@@ -39,6 +39,13 @@ public:
 
 	uint blendRUID = 0;
 
+	uint idleUID = 0;
+	uint walkUID = 0;
+	uint attackUID = 0;
+
+	float walkBlendTime = 0.1f;
+	float attackBlendTime = 0.1f;
+
 	float animTime = 0.0f;
 	float blendAnimTime = 0.0f;
 	float blendPercent = 0.0f;
@@ -49,11 +56,10 @@ public:
 	bool TestPlay = false;
 	bool TestPause = false;
 
-	bool useGraph = false;
-
 	//bone transformation index and bone GameObject UID
 	std::map<uint, uint> bones;
 	std::map<uint, uint> blendBones;
+
 };
 
 #endif // !__COMPONENTANIMATION_H__
