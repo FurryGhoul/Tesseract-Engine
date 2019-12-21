@@ -30,8 +30,6 @@
 #include "ModuleSceneLoader.h"
 #include "ModuleFileSystem.h"
 
-#include "ComponentAnimation.h"
-
 #ifdef _DEBUG
 //#define TEST_MEMORY_MANAGER
 #include "mmgr/mmgr.h"
@@ -465,12 +463,6 @@ void ModuleGUI::drawToolsMenu()
 			App->Load(); //Game mode is set to false after loading the virtual scene			
 			App->StopGame();
 		}
-
-		if (animations->compAnimation != nullptr)
-		{
-			animations->compAnimation->animTime = 0.0f;
-		}
-
 	}
 	if (changedPause && App->inGameMode())
 	{
